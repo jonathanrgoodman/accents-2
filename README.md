@@ -1,4 +1,4 @@
-# accents-2
+# Accents mimicry study repository information
  
 This is the repository for the paper, "Evidence that accent-mimicry detection is a product of ethnification." The raw data for phases 1 and 2 are in their respective folders stored as .csv files.
 
