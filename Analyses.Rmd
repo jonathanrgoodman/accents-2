@@ -1,7 +1,7 @@
 ---
 title: "R scripts for accents study"
 output: html_notebook
-author: "Jonathan R Goodman and Enrico Crema"
+
 ---
 
 ```{r}
