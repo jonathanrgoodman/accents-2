@@ -1,0 +1,132 @@
+---
+title: "Follow-up analyses with updated random-level effects"
+output: html_notebook
+---
+
+```{r}
+library(tidyr)
+library(brms)
+library(ggplot2)
+library(ggridges)
+```
+
+```{r}
+#updated diversity model with question as random-level effect
+
+updated.amalgamated.accent.data$White <- NA
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Belfast"] <- 96.43
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Bristol"] <- 84.00
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Dublin"] <- 90.40
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Essex"] <- 93.30
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Glasgow"] <- 88.40
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="Northeast"] <- 85.30
+updated.amalgamated.accent.data$White[updated.amalgamated.accent.data$Accent=="RP"] <- 59.70
+
+#remove individuals where study.accent = 0
+
+amalgamated.accent.data.study.only <- subset(updated.amalgamated.accent.data, Study.accent==1)
+
+#add mean probability of correct answer at city level from detection model
+
+amalgamated.accent.data.study.only$Probability <- NA
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Belfast"] <- diversity[1,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Bristol"] <- diversity[2,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Dublin"] <- diversity[3,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Essex"] <- diversity[4,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Glasgow"] <- diversity[5,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Northeast"] <- diversity[6,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="RP"] <- diversity[7,3]
+
+detection.model.accent.diversity.b <- brm(Correct~White+(1|Question|Participant), data=subset(amalgamated.accent.data.study.only, Sentence.accent!="Essex"), family="bernoulli")
+
+logistic(-1.26+0.03*50)
+logistic(-1.26+0.03*95)
+```
+```{r}
+#running ethnic diversity as glmer for confirmation
+
+library(lme4)
+library(lmerTest)
+detection.model.accent.diversity.c <- glmer(Correct~White+(1|Accent/Participant), data=subset(amalgamated.accent.data.study.only, Sentence.accent!="Essex"), family=binomial)
+summary(detection.model.accent.diversity.c)
+```
+```{r}
+exp(fixef(detection.model.accent.diversity.c))
+exp(confint(detection.model.accent.diversity.c, method="Wald"))
+```
+
+```{r}
+library(effects)
+effects_c <- effects::effect(term= "White", mod= detection.model.accent.diversity.c)
+effects_c <- as.data.frame(effects_c)
+summary(effects_c) 
+```
+
+```{r}
+library(sjPlot)
+sjPlot::tab_model(detection.model.accent.diversity.c, 
+                  show.re.var= TRUE)
+
+library(ggplot2)
+ggplot()+
+  geom_point(data=effects_c, aes(x=White, y=fit), color="blue")+
+  geom_line(data=effects_c, aes(x=White, y=fit), color="blue")+
+  geom_ribbon(data=effects_c, aes(x=White, ymin=lower, ymax=upper), alpha= 0.3, fill="blue")+
+  labs(x="Percentage of individuals identifying as White",y="Probability of a correct response")
+  
+```
+
+```{r}
+#test without RP
+
+#add mean probability of correct answer at city level from detection model
+
+amalgamated.accent.data.study.only$Probability <- NA
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Belfast"] <- diversity[1,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Bristol"] <- diversity[2,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Dublin"] <- diversity[3,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Essex"] <- diversity[4,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Glasgow"] <- diversity[5,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="Northeast"] <- diversity[6,3]
+amalgamated.accent.data.study.only$Probability[amalgamated.accent.data.study.only$Accent=="RP"] <- diversity[7,3]
+
+detection.model.accent.diversity.d <- brm(Correct~White+(1|Question|Participant), data=subset(amalgamated.accent.data.study.only, Sentence.accent!="Essex" & Sentence.accent!="RP"), family="bernoulli")
+
+logistic(-1.26+0.03*50)
+logistic(-1.26+0.03*95)
+```
+
+```{r}
+#running ethnic diversity as glmer for confirmation
+
+library(lme4)
+library(lmerTest)
+detection.model.accent.diversity.e <- glmer(Correct~White+(1|Accent/Participant), data=subset(amalgamated.accent.data.study.only, Sentence.accent!="Essex" & Sentence.accent!="RP"), family=binomial)
+summary(detection.model.accent.diversity.e)
+```
+
+```{r}
+exp(fixef(detection.model.accent.diversity.e))
+exp(confint(detection.model.accent.diversity.e, method="Wald"))
+```
+```{r}
+library(effects)
+effects_e <- effects::effect(term= "White", mod= detection.model.accent.diversity.e)
+effects_e <- as.data.frame(effects_e)
+summary(effects_e) 
+```
+
+```{r}
+library(sjPlot)
+sjPlot::tab_model(detection.model.accent.diversity.e, 
+                  show.re.var= TRUE)
+```
+
+```{r}
+library(ggplot2)
+ggplot()+
+  geom_point(data=effects_e, aes(x=White, y=fit), color="blue")+
+  geom_line(data=effects_e, aes(x=White, y=fit), color="blue")+
+  geom_ribbon(data=effects_e, aes(x=White, ymin=lower, ymax=upper), alpha= 0.3, fill="blue")+
+  labs(x="Percentage of individuals identifying as White",y="Probability of a correct response")
+```  

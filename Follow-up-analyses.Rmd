@@ -1,0 +1,349 @@
+---
+title: "Follow up analysis"
+output: html_notebook
+html_document: default
+---
+
+```{r}
+library(tidyr)
+library(brms)
+library(ggplot2)
+library(ggridges)
+```
+
+```{r}
+#Phase 1: MCMC analysis by listener accent using stimulus and participant as random effects; also including slopes
+
+bprior <- bprior <- c(prior_string("normal(0,1)", class = "b"))
+detection.model1 <- brm(Correct~(Accent-1)+(1|Participant)+(1+Accent|Question), prior=bprior, data=accent.data.long, family=bernoulli, chains=6)
+detection.model1.post <- posterior_samples(detection.model1)
+
+#computing probability intervals
+
+quantile(logistic(detection.model1.post$b_AccentBelfast),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentBristol),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentDublin),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentEssex),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentGlasgow),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentNortheast),c(0.025,0.975))
+quantile(logistic(detection.model1.post$b_AccentRP),c(0.025,0.975))
+```
+
+```{r}
+summary(detection.model1)
+```
+
+
+```{r}
+#Phase 2: MCMC analysis by whether participant spoke in a study accent using stimulus as random effect
+
+detection.model2 <- brm(Correct~(Study.accent-1)+(1|Participant)+(1+Accent|Question), prior=bprior, data=phase2.clean.long, family=bernoulli, chains = 6, iter = 3000)
+detection.model2.post <- posterior_samples(detection.model2)
+
+#compute PIs
+
+quantile(logistic(detection.model2.post$b_Study.accent0),c(0.025,0.975))
+quantile(logistic(detection.model2.post$b_Study.accent1),c(0.025,0.975))
+
+#compute the difference
+quantile(logistic(detection.model2.post$b_Study.accent0)-logistic(detection.model2.post$b_Study.accent1),c(0.025,0.975))
+
+```
+```{r}
+#Phase 2: investigate divergences in detection.model2
+
+#Check the summary, which includes Rhat values
+
+summary(detection.model2)
+
+#Extract Rhat values specifically
+
+rhat_values <- rhat(detection.model2)
+any(rhat_values > 1.04)
+
+```
+
+```{r}
+#new amalgamated dataset
+
+updated.phase1.data <- phase1.data.long
+updated.phase1.data$Question <- accent.data.long$Question
+updated.phase2.data <- phase2.data.long
+updated.phase2.data$Question <- phase2.clean.long$Question
+
+updated.updated.amalgamated.accent.data <- rbind(updated.phase1.data,updated.phase2.data)
+updated.updated.amalgamated.accent.data$Participant <- factor(updated.updated.amalgamated.accent.data$Participant)
+
+
+```
+
+```{r}
+#updated amalgamate model of listener speaking naturally in a study accent as a fixed effect and question as an additional random effect
+
+detection.model3 <- brm(Correct~(Study.accent-1)+(1|Participant)+(1+Accent|Question), prior=bprior, data=updated.amalgamated.accent.data, family=bernoulli, chains=6)
+detection.model3.post <- posterior_samples(detection.model3)
+
+summary(detection.model3)
+
+quantile(logistic(detection.model3.post$b_Study.accent0),c(0.025,0.975))
+quantile(logistic(detection.model3.post$b_Study.accent1),c(0.025,0.975))
+quantile(logistic(detection.model3.post$b_Study.accent0)-logistic(detection.model3.post$b_Study.accent1),c(0.025,0.975))
+```
+
+
+```{r}
+#updated  model for all variables of interest - amalgamated dataset
+
+detection.model.accent.updated <- brm(Correct~(Study.accent-1):(Sentence.accent-1)+(1|Participant)+(1+Accent|Question), prior=bprior, data=updated.amalgamated.accent.data, family=bernoulli, chains=6)
+detection.model.accent.updated.post <- posterior_samples(detection.model.accent.updated)
+summary(detection.model.accent.updated)
+
+paste("Belfast")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentBelfast`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBelfast`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentBelfast`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBelfast`),c(0.025,0.975))
+
+paste("Bristol")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentBristol`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBristol`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentBristol`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBristol`),c(0.025,0.975))
+
+paste("Dublin")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentDublin`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentDublin`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentDublin`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentDublin`),c(0.025,0.975))
+
+paste("Essex")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentEssex`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentEssex`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentEssex`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentEssex`),c(0.025,0.975))
+
+paste("Glasgow")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentGlasgow`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentGlasgow`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentGlasgow`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentGlasgow`),c(0.025,0.975))
+
+paste("Northeast")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentNortheast`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentNortheast`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentNortheast`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentNortheast`),c(0.025,0.975))
+
+paste("RP")
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentRP`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentRP`),c(0.025,0.975))
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent0:Sentence.accentRP`)-logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentRP`),c(0.025,0.975))
+```
+
+
+```{r}
+#phase 1 plots
+
+accent.CIs <- data.frame(Accent=c("Belfast","Bristol","Dublin","Essex","Glasgow","Northeast","RP"), Low=c(quantile(logistic(detection.model1.post$b_AccentBelfast),c(0.025)),quantile(logistic(detection.model1.post$b_AccentBristol),c(0.025)),quantile(logistic(detection.model1.post$b_AccentDublin),c(0.025)),quantile(logistic(detection.model1.post$b_AccentEssex),c(0.025)),quantile(logistic(detection.model1.post$b_AccentGlasgow),c(0.025)),quantile(logistic(detection.model1.post$b_AccentNortheast),c(0.025)),quantile(logistic(detection.model1.post$b_AccentRP),c(0.025))), High=c(quantile(logistic(detection.model1.post$b_AccentBelfast),c(0.975)),quantile(logistic(detection.model1.post$b_AccentBristol),c(0.975)),quantile(logistic(detection.model1.post$b_AccentDublin),c(0.975)),quantile(logistic(detection.model1.post$b_AccentEssex),c(0.975)),quantile(logistic(detection.model1.post$b_AccentGlasgow),c(0.975)),quantile(logistic(detection.model1.post$b_AccentNortheast),c(0.975)),quantile(logistic(detection.model1.post$b_AccentRP),c(0.975))))   
+
+detection.model1.post.long <- pivot_longer(detection.model1.post,cols=c(b_AccentBelfast,b_AccentBristol,b_AccentDublin,b_AccentEssex,b_AccentGlasgow,b_AccentNortheast,b_AccentRP))
+detection.model1.post.long$value <- logistic(detection.model1.post.long$value)
+
+ggplot(detection.model1.post.long, aes(x = value, y = name, fill = factor(stat(quantile)))) +
+  stat_density_ridges(
+    geom = "density_ridges_gradient",
+    calc_ecdf = TRUE,
+    quantiles = c(0.025, 0.975),
+    show.legend = FALSE,
+    scale = 2,
+    alpha = 0.7
+  ) +
+  scale_y_discrete(labels = c("Belfast","Bristol","Dublin","Essex","Glasgow","Northeast","RP")) +
+  scale_fill_manual(name = "Posterior Probability", values = c("lightgrey", "lightblue", "lightgrey"),) +
+  xlab("Probability of correct response") + ylab("Listener native accent")+
+  theme_minimal()
+```
+```{r}
+#Add results to map of overall region - load packages
+
+library(maps)
+library(tidyverse)
+library(forcats)
+library(ggrepel)
+library(ggplot2)
+```
+
+```{r}
+#add coordinates
+
+accent.locations <- tibble(city=c("Belfast","Bristol","Dublin","Colchester","Glasgow","Newcastle upon Tyne","London"), lat=0, lon=0)
+accent.locations[7,2] <- 51.501476
+accent.locations[7,3] <- -0.140634
+accent.locations[6,2] <- 54.977840
+accent.locations[6,3] <- -1.612920
+accent.locations[5,2] <- 55.864239
+accent.locations[5,3] <- -4.251806
+accent.locations[4,2] <- 51.889801
+accent.locations[4,3] <- 0.901230
+accent.locations[3,2] <- 53.349804
+accent.locations[3,3] <- -6.260310
+accent.locations[2,2] <- 51.454514
+accent.locations[2,3] <- -2.587910
+accent.locations[1,2] <- 54.597286
+accent.locations[1,3] <- -5.930120
+
+#add PIs
+accent.locations$low <- accent.CIs$Low
+accent.locations$high <- accent.CIs$High
+
+#add code for accent-region
+accent.locations$code <- c("A","B","C","D","E","F","G")
+
+#plot
+
+map.data <- map_data("world")
+
+ggplot() + 
+  geom_polygon(data = map.data, 
+               aes(x = long, y = lat, 
+                   group = group), 
+               fill = "gray90", 
+               color = "black"
+               ) + 
+  coord_fixed(ratio = 1.3, 
+              xlim = c(-10,1.5), 
+              ylim = c(50, 59))+
+  geom_point(data=accent.locations, aes(x=lon,y=lat), color="blue")+
+  geom_label_repel(data=accent.locations, aes(x=lon,y=lat,label=paste0(code,": ",round(low,3),"-",round(high,3))))+
+  ggtitle(label="PIs for Correct Response by Region")+
+  theme_void()
+```
+
+
+```{r}
+#phase 2 plotting
+
+#compute PIs
+
+quantile(logistic(detection.model2.post$b_Study.accent0),c(0.025,0.975))
+quantile(logistic(detection.model2.post$b_Study.accent1),c(0.025,0.975))
+quantile(logistic(detection.model2.post$b_Study.accent0)-logistic(detection.model2.post$b_Study.accent1),c(0.025,0.975))
+
+detection.model2.post.long <- pivot_longer(detection.model2.post,cols=c(b_Study.accent0,b_Study.accent1))
+detection.model2.post.long$value <- logistic(detection.model2.post.long$value)
+
+ggplot(detection.model2.post.long, aes(x = value, y = name, fill = factor(stat(quantile)))) +
+  stat_density_ridges(
+    geom = "density_ridges_gradient",
+    calc_ecdf = TRUE,
+    quantiles = c(0.025, 0.975),
+    show.legend = FALSE,
+    scale = 2,
+    alpha = 0.7
+  ) +
+  scale_y_discrete(labels = c("No","Yes")) +
+  scale_fill_manual(name = "Posterior Probability", values = c("lightgrey", "lightblue", "lightgrey"),) +
+  xlab("Probability of correct response") + ylab("Listener study accent?")+
+  theme_minimal()
+```
+```{r}
+#plotting amalgamated data from phases 1 and 2
+
+summary(detection.model3)
+
+quantile(logistic(detection.model3.post$b_Study.accent0),c(0.025,0.975))
+quantile(logistic(detection.model3.post$b_Study.accent1),c(0.025,0.975))
+quantile(logistic(detection.model3.post$b_Study.accent0)-logistic(detection.model3.post$b_Study.accent1),c(0.025,0.975))
+
+detection.model3.post.long <- pivot_longer(detection.model3.post,cols=c(b_Study.accent0,b_Study.accent1))
+detection.model3.post.long$value <- logistic(detection.model3.post.long$value)
+
+ggplot(detection.model3.post.long, aes(x = value, y = name, fill = factor(stat(quantile)))) +
+  stat_density_ridges(
+    geom = "density_ridges_gradient",
+    calc_ecdf = TRUE,
+    quantiles = c(0.025, 0.975),
+    show.legend = FALSE,
+    scale = 2,
+    alpha = 0.7
+  ) +
+  scale_y_discrete(labels = c("No","Yes")) +
+  scale_fill_manual(name = "Posterior Probability", values = c("lightgrey", "lightblue", "lightgrey"),) +
+  xlab("Probability of correct response") + ylab("Listener study accent?")+
+  theme_minimal()
+```
+
+```{r}
+#by study accent
+
+detection.model.accent.post.long <- pivot_longer(detection.model.accent.post,cols=c(`b_Study.accent0:Sentence.accentBelfast`,`b_Study.accent1:Sentence.accentBelfast`,`b_Study.accent0:Sentence.accentBristol`,`b_Study.accent1:Sentence.accentBristol`,`b_Study.accent0:Sentence.accentDublin`,`b_Study.accent1:Sentence.accentDublin`,`b_Study.accent0:Sentence.accentEssex`,`b_Study.accent1:Sentence.accentEssex`,`b_Study.accent0:Sentence.accentGlasgow`,`b_Study.accent1:Sentence.accentGlasgow`,`b_Study.accent0:Sentence.accentNortheast`,`b_Study.accent1:Sentence.accentNortheast`,`b_Study.accent0:Sentence.accentRP`,`b_Study.accent1:Sentence.accentRP`,))
+detection.model.accent.post.long$value <- logistic(detection.model.accent.post.long$value)
+detection.model.accent.post.long$Study.accent <- NA
+detection.model.accent.post.long$Study.accent[grep("0",detection.model.accent.post.long$name)] <- 0
+detection.model.accent.post.long$Study.accent[grep("1",detection.model.accent.post.long$name)] <- 1
+detection.model.accent.post.long$Sentence.accent <- NA
+detection.model.accent.post.long$Sentence.accent[grep("Belfast",detection.model.accent.post.long$name)] <- "Belfast"
+detection.model.accent.post.long$Sentence.accent[grep("Bristol",detection.model.accent.post.long$name)] <- "Bristol"
+detection.model.accent.post.long$Sentence.accent[grep("Dublin",detection.model.accent.post.long$name)] <- "Dublin"
+detection.model.accent.post.long$Sentence.accent[grep("Essex",detection.model.accent.post.long$name)] <- "Essex"
+detection.model.accent.post.long$Sentence.accent[grep("Glasgow",detection.model.accent.post.long$name)] <- "Glasgow"
+detection.model.accent.post.long$Sentence.accent[grep("Northeast",detection.model.accent.post.long$name)] <- "Northeast"
+detection.model.accent.post.long$Sentence.accent[grep("RP",detection.model.accent.post.long$name)] <- "RP"
+
+ggplot(detection.model.accent.post.long, aes(x = value, y = Sentence.accent, fill = factor(Study.accent))) +
+  stat_density_ridges(
+    geom = "density_ridges_gradient",
+    calc_ecdf = TRUE,
+    quantiles = c(0.025, 0.975),
+    show.legend = FALSE,
+    scale = 2,
+    alpha = 0.7
+  ) +
+  scale_y_discrete(labels=c("Belfast","Bristol","Dublin","Essex","Glasgow","Northeast","RP")) +
+  scale_fill_manual(name = "Posterior Probability", values = c("red","light blue","blue"),) +
+  xlab("Probability of correct response") + ylab("Listener native accent")+
+  theme_minimal()
+
+```
+```{r}
+#regional map for amalgamated data — native speakers only
+
+accent.CIs <- data.frame(Accent=c("Belfast","Bristol","Dublin","Essex","Glasgow","Northeast","RP"), 
+Low=c(quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBelfast`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBristol`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentDublin`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentEssex`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentGlasgow`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentNortheast`),c(0.025)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentRP`),c(0.025))), 
+High=c(quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBelfast`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentBristol`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentDublin`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentEssex`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentGlasgow`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentNortheast`),c(0.975)),
+quantile(logistic(detection.model.accent.updated.post$`b_Study.accent1:Sentence.accentRP`),c(0.975)))) 
+
+#add PIs
+accent.locations$low <- accent.CIs$Low
+accent.locations$high <- accent.CIs$High
+
+#add code for accent-region
+accent.locations$code <- c("A","B","C","D","E","F","G")
+
+#plot
+
+map.data <- map_data("world")
+
+ggplot() + 
+  geom_polygon(data = map.data, 
+               aes(x = long, y = lat, 
+                   group = group), 
+               fill = "gray90", 
+               color = "black"
+               ) + 
+  coord_fixed(ratio = 1.3, 
+              xlim = c(-10,1.5), 
+              ylim = c(50, 59))+
+  geom_point(data=accent.locations, aes(x=lon,y=lat), color="blue")+
+  geom_label_repel(data=accent.locations, aes(x=lon,y=lat,label=paste0(code,": ",round(low,3),"-",round(high,3))))+
+  ggtitle(label="PIs for Correct Response by Region")+
+  theme_void()
+```
+
+
+
